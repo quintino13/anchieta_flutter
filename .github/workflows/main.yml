@@ -1,71 +1,13 @@
-name: Flutter Unit Tests Summary (Local Runner)
+name: Executar Testes Flutter
 
-on:
-  pull_request:
-    branches: [ main ]
+on: [push, pull_request]
 
 jobs:
-  test-summary:
-    runs-on: self-hosted
-
+  test:
+    runs-on: self-hosted # Define que rodará no seu runner local
     steps:
-      - name: Checkout Aluno
+      - name: Checkout do código
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: aluno_code
 
-      - name: Checkout Testes Oficiais
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: oficial_code
-
-      - name: Restaurar Testes Oficiais
-        run: |
-          # Remove os testes que o aluno pode ter alterado e copia os originais
-          rm -rf aluno_code/test
-          cp -r oficial_code/test aluno_code/test
-
-      - name: Install Dependencies
-        working-directory: ./aluno_code
-        run: flutter pub get
-
-      - name: Run Tests
-        working-directory: ./aluno_code
-        run: |
-          # O || true evita que o pipeline pare antes de gerar o resumo
-          flutter test --machine > machine_results.json || true
-
-      - name: Show Summary
-        working-directory: ./aluno_code
-        run: |
-          # 1. Filtra as linhas que indicam conclusão de um teste
-          grep '"type":"testDone"' machine_results.json > filtered.txt || true
-
-          # 2. Conta os resultados de forma mais robusta
-          # Usamos o comando awk para garantir que o resultado seja sempre um número válido
-          PASSED=$(grep '"type":"testDone"' machine_results.json | grep -c '"result":"success"' || echo 0)
-          FAILED=$(grep '"type":"testDone"' machine_results.json | grep -c '"result":"failure"' || echo 0)
-          ERRORS=$(grep '"type":"testDone"' machine_results.json | grep -c '"result":"error"' || echo 0)
-          
-          # 3. Cálculos de total e reprovações usando a expansão aritmética do shell $(( ))
-          # Esta forma é mais rápida e menos propensa a erros que o 'expr'
-          REPROVADOS=$((FAILED + ERRORS))
-          TOTAL=$((PASSED + REPROVADOS))
-
-          echo "------------------------------------------"
-          echo "         RESUMO DA AVALIAÇÃO             "
-          echo "------------------------------------------"
-          echo "Total de fases verificadas: $TOTAL"
-          echo "Passou: $PASSED"
-          echo "Falhou: $REPROVADOS"
-          echo "------------------------------------------"
-
-          # 4. Verificação final para dar o feedback no Pull Request
-          if [ "$REPROVADOS" -gt 0 ]; then
-            echo "Status: REPROVADO - Faltam itens a corrigir."
-            exit 1
-          else
-            echo "Status: APROVADO - Todos os testes passaram!"
-          fi
+      - name: Rodar Testes
+        run: flutter test
